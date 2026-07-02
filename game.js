@@ -278,20 +278,20 @@ document.addEventListener('keydown', e => {
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
-    case 'ArrowLeft':
+    case 'KeyA':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
       break;
-    case 'ArrowRight':
+    case 'KeyD':
       if (!collide(current.shape, current.x + 1, current.y)) current.x++;
       break;
-    case 'ArrowDown':
+    case 'KeyS':
       softDrop();
       break;
-    case 'ArrowUp':
+    case 'KeyW':
     case 'KeyX':
       tryRotate();
       break;
-    case 'Space':
+    case 'KeyL':
       e.preventDefault();
       hardDrop();
       break;
