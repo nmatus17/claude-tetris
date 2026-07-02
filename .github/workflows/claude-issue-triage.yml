@@ -64,6 +64,9 @@ jobs:
                - **Causa probable / análisis**.
                - **Enfoque de solución sugerido**: pasos concretos para resolverlo.
                - **Labels asignados** y por qué.
+               El comentario debe estar escrito en formato Markdown que GitHub
+               pueda renderizar (encabezados, listas, **negritas**, `código`,
+               bloques de código con ```, etc.).
                Sé conciso y técnico. NO modifiques el código todavía.
           claude_args: |
             --allowed-tools "Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Read,Grep,Glob"
