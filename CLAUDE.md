@@ -33,9 +33,9 @@ Constantes tuneables al inicio de `game.js`: `COLS`, `ROWS`, `BLOCK`, `COLORS`, 
 
 **Importante:** si cambias `COLS`, `ROWS` o `BLOCK`, debes actualizar manualmente `width`/`height` del `<canvas id="board">` en `index.html` (deben ser `COLS*BLOCK` × `ROWS*BLOCK`). No se derivan automáticamente.
 
-## Known inconsistency — controls
+## Controles
 
-Los controles reales en `game.js` (keydown handler) son **WASD**, no flechas: `A`/`D` mover, `S` soft drop, `W` o `X` rotar, `L` hard drop, `P` pausa. El `README.md` y la lista de `CONTROLS` en `index.html` todavía documentan flechas + Espacio (desactualizados). Al tocar controles, sincroniza los tres.
+El `keydown` handler en `game.js` acepta doble esquema, WASD y flechas: `A`/`ArrowLeft` y `D`/`ArrowRight` mueven, `S`/`ArrowDown` soft drop, `W`/`K`/`ArrowUp`/`Space` rotan, `L`/`Enter` hard drop, `P` pausa. `README.md` y la lista de `CONTROLS` en `index.html` deben mantenerse sincronizados con este set — al tocar controles, actualiza los tres archivos.
 
 ## GitHub Actions
 
