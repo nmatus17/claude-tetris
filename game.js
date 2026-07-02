@@ -288,7 +288,7 @@ document.addEventListener('keydown', e => {
       softDrop();
       break;
     case 'KeyW':
-    case 'KeyX':
+    case 'KeyK':
       tryRotate();
       break;
     case 'KeyL':
