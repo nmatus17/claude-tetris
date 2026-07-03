@@ -186,6 +186,8 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const controlsList = document.getElementById('controls-list');
 const remapBtn = document.getElementById('remap-btn');
+const overlayBox = document.getElementById('overlay-box');
+const keymapBox = document.getElementById('keymap-box');
 const skinSelect = document.getElementById('skin-select');
 const keymapOverlay = document.getElementById('keymap-overlay');
 const keymapList = document.getElementById('keymap-list');
@@ -215,7 +217,7 @@ const gameoverHighscores = document.getElementById('gameover-highscores');
 const gameoverBestCombo = document.getElementById('gameover-best-combo');
 const gameoverMaxLines = document.getElementById('gameover-max-lines');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, pausedByKeymap;
 let combo, maxCombo;
 let keyMap = loadKeyMap();
 let highscores = loadHighscores();
@@ -444,13 +446,31 @@ function applyRemap(action, code) {
 function openKeymapModal() {
   hideKeymapError();
   renderKeymapModal();
-  keymapOverlay.classList.remove('hidden');
+  overlayBox.classList.add('hidden');
+  keymapBox.classList.remove('hidden');
+  overlay.classList.remove('hidden');
+  if (!paused && !gameOver) {
+    pausedByKeymap = true;
+    paused = true;
+    cancelAnimationFrame(animId);
+  }
 }
 
 function closeKeymapModal() {
   remappingAction = null;
   hideKeymapError();
-  keymapOverlay.classList.add('hidden');
+  keymapBox.classList.add('hidden');
+  if (pausedByKeymap) {
+    pausedByKeymap = false;
+    paused = false;
+    overlay.classList.add('hidden');
+    lastTime = performance.now();
+    animId = requestAnimationFrame(loop);
+  } else if (paused || gameOver) {
+    overlayBox.classList.remove('hidden');
+  } else {
+    overlay.classList.add('hidden');
+  }
 }
 
 function createBoard() {
@@ -705,6 +725,7 @@ function init() {
   baseLevel = startLevel;
   level = baseLevel;
   paused = false;
+  pausedByKeymap = false;
   gameOver = false;
   combo = 0;
   maxCombo = 0;
@@ -715,6 +736,8 @@ function init() {
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  overlayBox.classList.remove('hidden');
+  keymapBox.classList.add('hidden');
   hideNameEntry();
   gameoverRecords.classList.add('hidden');
   closePauseMenu();
@@ -737,6 +760,11 @@ document.addEventListener('keydown', e => {
       remappingAction = null;
     }
     e.preventDefault();
+    return;
+  }
+
+  if (!keymapBox.classList.contains('hidden')) {
+    if (e.code === 'Escape') closeKeymapModal();
     return;
   }
 
@@ -824,8 +852,8 @@ keymapResetBtn.addEventListener('click', () => {
   renderKeymapModal();
   renderControlsList();
 });
-keymapOverlay.addEventListener('click', e => {
-  if (e.target === keymapOverlay) closeKeymapModal();
+overlay.addEventListener('click', e => {
+  if (e.target === overlay && !keymapBox.classList.contains('hidden')) closeKeymapModal();
 });
 
 resumeBtn.addEventListener('click', resumeGame);
