@@ -717,6 +717,9 @@ function loop(ts) {
     }
   }
   draw();
+  // No reprogramar si la partida terminó o se pausó dentro de esta iteración
+  // (p. ej. lockPiece -> spawn -> endGame), para no anular su cancelAnimationFrame.
+  if (gameOver || paused) return;
   animId = requestAnimationFrame(loop);
 }
 
