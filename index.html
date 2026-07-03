@@ -33,13 +33,14 @@
 
         <div class="panel-section controls">
           <span class="label">CONTROLS</span>
-          <ul>
+          <ul id="controls-list">
             <li><kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd> mover</li>
             <li><kbd>W</kbd><kbd>K</kbd> / <kbd>↑</kbd> / <kbd>Espacio</kbd> rotar</li>
             <li><kbd>S</kbd> / <kbd>↓</kbd> bajar</li>
             <li><kbd>L</kbd> / <kbd>Enter</kbd> caída</li>
             <li><kbd>P</kbd> pausa</li>
           </ul>
+          <button id="remap-btn" class="link-btn">Reasignar controles</button>
         </div>
       </aside>
     </div>
@@ -49,6 +50,17 @@
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
         <button id="restart-btn">Reiniciar</button>
+      </div>
+    </div>
+
+    <div id="keymap-overlay" class="overlay hidden">
+      <div class="overlay-box keymap-box">
+        <p class="keymap-title">CONTROLES</p>
+        <ul id="keymap-list" class="keymap-list"></ul>
+        <div class="keymap-actions">
+          <button id="keymap-reset-btn" class="link-btn">Restablecer</button>
+          <button id="keymap-close-btn">Cerrar</button>
+        </div>
       </div>
     </div>
   </div>
