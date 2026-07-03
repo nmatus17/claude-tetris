@@ -78,13 +78,13 @@ Después abre `http://localhost:8000` en el navegador.
 
 ## Controles
 
-| Tecla     | Acción                            |
-| --------- | --------------------------------- |
-| `A` / `D` | Mover la pieza horizontalmente    |
-| `W` o `K` | Rotar la pieza en sentido horario |
-| `S`       | Soft drop (bajar más rápido)      |
-| `L`       | Hard drop (caída instantánea)     |
-| `P`       | Pausar / reanudar                 |
+| Tecla                     | Acción                            |
+| ------------------------- | --------------------------------- |
+| `A` / `D` o `←` / `→`     | Mover la pieza horizontalmente    |
+| `W`, `K`, `↑` o `Espacio` | Rotar la pieza en sentido horario |
+| `S` o `↓`                 | Soft drop (bajar más rápido)      |
+| `L` o `Enter`             | Hard drop (caída instantánea)     |
+| `P`                       | Pausar / reanudar                 |
 
 ---
 

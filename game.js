@@ -279,19 +279,27 @@ document.addEventListener('keydown', e => {
   if (paused || gameOver) return;
   switch (e.code) {
     case 'KeyA':
+    case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
       break;
     case 'KeyD':
+    case 'ArrowRight':
       if (!collide(current.shape, current.x + 1, current.y)) current.x++;
       break;
     case 'KeyS':
+    case 'ArrowDown':
+      e.preventDefault();
       softDrop();
       break;
     case 'KeyW':
     case 'KeyK':
+    case 'ArrowUp':
+    case 'Space':
+      e.preventDefault();
       tryRotate();
       break;
     case 'KeyL':
+    case 'Enter':
       e.preventDefault();
       hardDrop();
       break;
