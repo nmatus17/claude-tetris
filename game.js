@@ -72,6 +72,7 @@ const controlsList = document.getElementById('controls-list');
 const remapBtn = document.getElementById('remap-btn');
 const keymapOverlay = document.getElementById('keymap-overlay');
 const keymapList = document.getElementById('keymap-list');
+const keymapError = document.getElementById('keymap-error');
 const keymapResetBtn = document.getElementById('keymap-reset-btn');
 const keymapCloseBtn = document.getElementById('keymap-close-btn');
 
@@ -155,10 +156,24 @@ function startRemap(action, changeBtn, keyBadge) {
   keyBadge.textContent = '…';
 }
 
+function showKeymapError(message) {
+  keymapError.textContent = message;
+  keymapError.classList.remove('hidden');
+}
+
+function hideKeymapError() {
+  keymapError.textContent = '';
+  keymapError.classList.add('hidden');
+}
+
 function applyRemap(action, code) {
-  for (const other of Object.keys(keyMap)) {
-    keyMap[other] = keyMap[other].filter(c => c !== code);
+  const owner = actionForCode(code);
+  if (owner && owner !== action) {
+    showKeymapError(`"${codeToLabel(code)}" ya está asignada a "${ACTION_LABELS[owner]}". Elige otra tecla.`);
+    renderKeymapModal();
+    return;
   }
+  hideKeymapError();
   keyMap[action] = [code];
   saveKeyMap();
   renderKeymapModal();
@@ -166,12 +181,14 @@ function applyRemap(action, code) {
 }
 
 function openKeymapModal() {
+  hideKeymapError();
   renderKeymapModal();
   keymapOverlay.classList.remove('hidden');
 }
 
 function closeKeymapModal() {
   remappingAction = null;
+  hideKeymapError();
   keymapOverlay.classList.add('hidden');
 }
 
@@ -363,6 +380,7 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    overlay.classList.add('hidden');
     lastTime = performance.now();
     loop(lastTime);
   } else {
@@ -458,6 +476,7 @@ keymapCloseBtn.addEventListener('click', closeKeymapModal);
 keymapResetBtn.addEventListener('click', () => {
   keyMap = Object.fromEntries(Object.entries(DEFAULT_KEYMAP).map(([action, codes]) => [action, [...codes]]));
   saveKeyMap();
+  hideKeymapError();
   renderKeymapModal();
   renderControlsList();
 });

@@ -144,6 +144,16 @@ kbd {
   width: 100%;
 }
 
+.keymap-error {
+  font-size: 12px;
+  color: #e57373;
+  text-align: center;
+}
+
+.keymap-error.hidden {
+  display: none;
+}
+
 .keymap-row {
   display: flex;
   align-items: center;
