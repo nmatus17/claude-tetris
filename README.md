@@ -42,6 +42,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Controles reasignables**: cada acción se puede remapear a otra tecla desde un modal, con persistencia en `localStorage`.
 
 ---
 
@@ -85,6 +86,8 @@ Después abre `http://localhost:8000` en el navegador.
 | `S` o `↓`                 | Soft drop (bajar más rápido)      |
 | `L` o `Enter`             | Hard drop (caída instantánea)     |
 | `P`                       | Pausar / reanudar                 |
+
+Estos son los controles por defecto. Puedes reasignarlos desde el botón **"Reasignar controles"** del panel lateral: elige la acción a cambiar, pulsa "Cambiar" y presiona la tecla nueva. La reasignación se guarda en `localStorage` y persiste entre sesiones; el botón "Restablecer" del modal vuelve a los valores por defecto.
 
 ---
 

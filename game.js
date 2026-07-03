@@ -28,6 +28,35 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
+const KEYMAP_STORAGE_KEY = 'tetris-keymap';
+
+const DEFAULT_KEYMAP = {
+  moveLeft: ['KeyA', 'ArrowLeft'],
+  moveRight: ['KeyD', 'ArrowRight'],
+  softDrop: ['KeyS', 'ArrowDown'],
+  rotate: ['KeyW', 'KeyK', 'ArrowUp', 'Space'],
+  hardDrop: ['KeyL', 'Enter'],
+  pause: ['KeyP'],
+};
+
+const ACTION_LABELS = {
+  moveLeft: 'Mover izquierda',
+  moveRight: 'Mover derecha',
+  softDrop: 'Bajar',
+  rotate: 'Rotar',
+  hardDrop: 'Caída instantánea',
+  pause: 'Pausa',
+};
+
+const CODE_LABELS = {
+  ArrowLeft: '←',
+  ArrowRight: '→',
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  Space: 'Espacio',
+  Enter: 'Enter',
+};
+
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -39,8 +68,112 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const controlsList = document.getElementById('controls-list');
+const remapBtn = document.getElementById('remap-btn');
+const keymapOverlay = document.getElementById('keymap-overlay');
+const keymapList = document.getElementById('keymap-list');
+const keymapResetBtn = document.getElementById('keymap-reset-btn');
+const keymapCloseBtn = document.getElementById('keymap-close-btn');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let keyMap = loadKeyMap();
+let remappingAction = null;
+
+function codeToLabel(code) {
+  return CODE_LABELS[code] || (code.startsWith('Key') ? code.slice(3) : code.startsWith('Digit') ? code.slice(5) : code);
+}
+
+function loadKeyMap() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEYMAP_STORAGE_KEY));
+    if (saved && typeof saved === 'object') {
+      const merged = {};
+      for (const action of Object.keys(DEFAULT_KEYMAP)) {
+        merged[action] = Array.isArray(saved[action]) && saved[action].length
+          ? saved[action]
+          : DEFAULT_KEYMAP[action];
+      }
+      return merged;
+    }
+  } catch (_) {
+    // localStorage no disponible o datos corruptos: se usan los valores por defecto.
+  }
+  return Object.fromEntries(Object.entries(DEFAULT_KEYMAP).map(([action, codes]) => [action, [...codes]]));
+}
+
+function saveKeyMap() {
+  try {
+    localStorage.setItem(KEYMAP_STORAGE_KEY, JSON.stringify(keyMap));
+  } catch (_) {
+    // localStorage no disponible: la reasignación no persiste entre sesiones.
+  }
+}
+
+function actionForCode(code) {
+  for (const action of Object.keys(keyMap)) {
+    if (keyMap[action].includes(code)) return action;
+  }
+  return null;
+}
+
+function renderControlsList() {
+  controlsList.innerHTML = Object.keys(DEFAULT_KEYMAP).map(action => {
+    const keys = keyMap[action].map(code => `<kbd>${codeToLabel(code)}</kbd>`).join(' ');
+    return `<li>${keys} ${ACTION_LABELS[action]}</li>`;
+  }).join('');
+}
+
+function renderKeymapModal() {
+  keymapList.innerHTML = '';
+  for (const action of Object.keys(DEFAULT_KEYMAP)) {
+    const li = document.createElement('li');
+    li.className = 'keymap-row';
+
+    const label = document.createElement('span');
+    label.className = 'keymap-action-label';
+    label.textContent = ACTION_LABELS[action];
+
+    const keyBadge = document.createElement('kbd');
+    keyBadge.textContent = codeToLabel(keyMap[action][0]);
+
+    const changeBtn = document.createElement('button');
+    changeBtn.type = 'button';
+    changeBtn.className = 'keymap-change-btn';
+    changeBtn.textContent = 'Cambiar';
+    changeBtn.addEventListener('click', () => startRemap(action, changeBtn, keyBadge));
+
+    li.append(label, keyBadge, changeBtn);
+    keymapList.appendChild(li);
+  }
+}
+
+function startRemap(action, changeBtn, keyBadge) {
+  if (remappingAction) return;
+  remappingAction = action;
+  changeBtn.textContent = 'Pulsa una tecla…';
+  changeBtn.classList.add('listening');
+  keyBadge.textContent = '…';
+}
+
+function applyRemap(action, code) {
+  for (const other of Object.keys(keyMap)) {
+    keyMap[other] = keyMap[other].filter(c => c !== code);
+  }
+  keyMap[action] = [code];
+  saveKeyMap();
+  renderKeymapModal();
+  renderControlsList();
+}
+
+function openKeymapModal() {
+  renderKeymapModal();
+  keymapOverlay.classList.remove('hidden');
+}
+
+function closeKeymapModal() {
+  remappingAction = null;
+  keymapOverlay.classList.add('hidden');
+}
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -275,31 +408,43 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (remappingAction) {
+    if (e.code === 'Escape') {
+      closeKeymapModal();
+    } else {
+      applyRemap(remappingAction, e.code);
+      remappingAction = null;
+    }
+    e.preventDefault();
+    return;
+  }
+
+  const action = actionForCode(e.code);
+
+  if (action === 'pause') {
+    if (e.repeat) return;
+    togglePause();
+    return;
+  }
+
   if (paused || gameOver) return;
-  switch (e.code) {
-    case 'KeyA':
-    case 'ArrowLeft':
+
+  switch (action) {
+    case 'moveLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
       break;
-    case 'KeyD':
-    case 'ArrowRight':
+    case 'moveRight':
       if (!collide(current.shape, current.x + 1, current.y)) current.x++;
       break;
-    case 'KeyS':
-    case 'ArrowDown':
+    case 'softDrop':
       e.preventDefault();
       softDrop();
       break;
-    case 'KeyW':
-    case 'KeyK':
-    case 'ArrowUp':
-    case 'Space':
+    case 'rotate':
       e.preventDefault();
       tryRotate();
       break;
-    case 'KeyL':
-    case 'Enter':
+    case 'hardDrop':
       e.preventDefault();
       hardDrop();
       break;
@@ -308,5 +453,17 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+remapBtn.addEventListener('click', openKeymapModal);
+keymapCloseBtn.addEventListener('click', closeKeymapModal);
+keymapResetBtn.addEventListener('click', () => {
+  keyMap = Object.fromEntries(Object.entries(DEFAULT_KEYMAP).map(([action, codes]) => [action, [...codes]]));
+  saveKeyMap();
+  renderKeymapModal();
+  renderControlsList();
+});
+keymapOverlay.addEventListener('click', e => {
+  if (e.target === keymapOverlay) closeKeymapModal();
+});
 
+renderControlsList();
 init();
