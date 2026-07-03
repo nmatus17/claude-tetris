@@ -70,13 +70,14 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const controlsList = document.getElementById('controls-list');
 const remapBtn = document.getElementById('remap-btn');
-const keymapOverlay = document.getElementById('keymap-overlay');
+const overlayBox = document.getElementById('overlay-box');
+const keymapBox = document.getElementById('keymap-box');
 const keymapList = document.getElementById('keymap-list');
 const keymapError = document.getElementById('keymap-error');
 const keymapResetBtn = document.getElementById('keymap-reset-btn');
 const keymapCloseBtn = document.getElementById('keymap-close-btn');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, pausedByKeymap;
 let keyMap = loadKeyMap();
 let remappingAction = null;
 
@@ -183,13 +184,31 @@ function applyRemap(action, code) {
 function openKeymapModal() {
   hideKeymapError();
   renderKeymapModal();
-  keymapOverlay.classList.remove('hidden');
+  overlayBox.classList.add('hidden');
+  keymapBox.classList.remove('hidden');
+  overlay.classList.remove('hidden');
+  if (!paused && !gameOver) {
+    pausedByKeymap = true;
+    paused = true;
+    cancelAnimationFrame(animId);
+  }
 }
 
 function closeKeymapModal() {
   remappingAction = null;
   hideKeymapError();
-  keymapOverlay.classList.add('hidden');
+  keymapBox.classList.add('hidden');
+  if (pausedByKeymap) {
+    pausedByKeymap = false;
+    paused = false;
+    overlay.classList.add('hidden');
+    lastTime = performance.now();
+    animId = requestAnimationFrame(loop);
+  } else if (paused || gameOver) {
+    overlayBox.classList.remove('hidden');
+  } else {
+    overlay.classList.add('hidden');
+  }
 }
 
 function createBoard() {
@@ -413,6 +432,7 @@ function init() {
   lines = 0;
   level = 1;
   paused = false;
+  pausedByKeymap = false;
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
@@ -421,6 +441,8 @@ function init() {
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  overlayBox.classList.remove('hidden');
+  keymapBox.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -434,6 +456,11 @@ document.addEventListener('keydown', e => {
       remappingAction = null;
     }
     e.preventDefault();
+    return;
+  }
+
+  if (!keymapBox.classList.contains('hidden')) {
+    if (e.code === 'Escape') closeKeymapModal();
     return;
   }
 
@@ -480,8 +507,8 @@ keymapResetBtn.addEventListener('click', () => {
   renderKeymapModal();
   renderControlsList();
 });
-keymapOverlay.addEventListener('click', e => {
-  if (e.target === keymapOverlay) closeKeymapModal();
+overlay.addEventListener('click', e => {
+  if (e.target === overlay && !keymapBox.classList.contains('hidden')) closeKeymapModal();
 });
 
 renderControlsList();
