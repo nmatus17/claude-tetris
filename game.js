@@ -216,7 +216,7 @@ const gameoverHighscores = document.getElementById('gameover-highscores');
 const gameoverBestCombo = document.getElementById('gameover-best-combo');
 const gameoverMaxLines = document.getElementById('gameover-max-lines');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, pausedByKeymap;
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, pausedByKeymap, started = false;
 let combo, maxCombo;
 let keyMap = loadKeyMap();
 let highscores = loadHighscores();
@@ -723,7 +723,7 @@ function loop(ts) {
   animId = requestAnimationFrame(loop);
 }
 
-function init() {
+function init(autostart = true) {
   board = createBoard();
   score = 0;
   lines = 0;
@@ -746,8 +746,13 @@ function init() {
   hideNameEntry();
   gameoverRecords.classList.add('hidden');
   closePauseMenu();
+  started = autostart;
   cancelAnimationFrame(animId);
-  animId = requestAnimationFrame(loop);
+  if (autostart) {
+    animId = requestAnimationFrame(loop);
+  } else {
+    draw(); // dibuja el estado inicial estático detrás del overlay de inicio
+  }
 }
 
 document.addEventListener('keydown', e => {
@@ -772,6 +777,9 @@ document.addEventListener('keydown', e => {
     if (e.code === 'Escape') closeKeymapModal();
     return;
   }
+
+  // Aún no se ha pulsado "Jugar": ignora acciones del juego (incluida la pausa).
+  if (!started) return;
 
   const action = actionForCode(e.code);
 
@@ -885,5 +893,5 @@ startLevelSelect.value = String(startLevel);
 
 renderControlsList();
 applySkin(currentSkin);
-init();
+init(false);
 renderStartScreen();
