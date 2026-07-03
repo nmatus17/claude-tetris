@@ -152,7 +152,7 @@ const DEFAULT_KEYMAP = {
   softDrop: ['KeyS', 'ArrowDown'],
   rotate: ['KeyW', 'KeyK', 'ArrowUp', 'Space'],
   hardDrop: ['KeyL', 'Enter'],
-  pause: ['KeyP'],
+  pause: ['KeyP', 'Escape'],
 };
 
 const ACTION_LABELS = {
@@ -192,6 +192,14 @@ const keymapList = document.getElementById('keymap-list');
 const keymapError = document.getElementById('keymap-error');
 const keymapResetBtn = document.getElementById('keymap-reset-btn');
 const keymapCloseBtn = document.getElementById('keymap-close-btn');
+const pauseOverlay = document.getElementById('pause-overlay');
+const pauseControlsBtn = document.getElementById('pause-controls-btn');
+const pauseControlsList = document.getElementById('pause-controls-list');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const startLevelSelect = document.getElementById('start-level-select');
+
+const MAX_START_LEVEL = 15;
 
 const startOverlay = document.getElementById('start-overlay');
 const startHighscores = document.getElementById('start-highscores');
@@ -214,6 +222,8 @@ let highscores = loadHighscores();
 let stats = loadStats();
 let remappingAction = null;
 let currentSkin = loadSkin();
+let startLevel = 1;   // nivel elegido en el menú; se aplica a la PRÓXIMA partida
+let baseLevel = 1;    // nivel base de la partida actual (fijado en init)
 
 function codeToLabel(code) {
   return CODE_LABELS[code] || (code.startsWith('Key') ? code.slice(3) : code.startsWith('Digit') ? code.slice(5) : code);
@@ -367,10 +377,12 @@ function actionForCode(code) {
 }
 
 function renderControlsList() {
-  controlsList.innerHTML = Object.keys(DEFAULT_KEYMAP).map(action => {
+  const html = Object.keys(DEFAULT_KEYMAP).map(action => {
     const keys = keyMap[action].map(code => `<kbd>${codeToLabel(code)}</kbd>`).join(' ');
     return `<li>${keys} ${ACTION_LABELS[action]}</li>`;
   }).join('');
+  controlsList.innerHTML = html;
+  pauseControlsList.innerHTML = html;
 }
 
 function renderKeymapModal() {
@@ -507,7 +519,7 @@ function clearLines() {
     if (combo > maxCombo) maxCombo = combo;
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
+    level = baseLevel + Math.floor(lines / 10);
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   } else {
@@ -641,19 +653,33 @@ function endGame() {
   renderStartScreen();
 }
 
+function openPauseMenu() {
+  renderControlsList();
+  pauseControlsList.classList.add('hidden');
+  pauseControlsBtn.textContent = 'Ver controles';
+  startLevelSelect.value = String(startLevel);
+  pauseOverlay.classList.remove('hidden');
+}
+
+function closePauseMenu() {
+  pauseOverlay.classList.add('hidden');
+}
+
 function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
-    overlay.classList.add('hidden');
+    closePauseMenu();
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    openPauseMenu();
   }
+}
+
+function resumeGame() {
+  if (paused && !gameOver) togglePause();
 }
 
 function loop(ts) {
@@ -676,12 +702,13 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  baseLevel = startLevel;
+  level = baseLevel;
   paused = false;
   gameOver = false;
   combo = 0;
   maxCombo = 0;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (baseLevel - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
@@ -690,6 +717,7 @@ function init() {
   overlay.classList.add('hidden');
   hideNameEntry();
   gameoverRecords.classList.add('hidden');
+  closePauseMenu();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -799,6 +827,28 @@ keymapResetBtn.addEventListener('click', () => {
 keymapOverlay.addEventListener('click', e => {
   if (e.target === keymapOverlay) closeKeymapModal();
 });
+
+resumeBtn.addEventListener('click', resumeGame);
+pauseRestartBtn.addEventListener('click', init);
+pauseControlsBtn.addEventListener('click', () => {
+  const collapsed = pauseControlsList.classList.toggle('hidden');
+  pauseControlsBtn.textContent = collapsed ? 'Ver controles' : 'Ocultar controles';
+});
+startLevelSelect.addEventListener('change', () => {
+  const value = parseInt(startLevelSelect.value, 10);
+  if (Number.isFinite(value)) {
+    startLevel = Math.min(MAX_START_LEVEL, Math.max(1, value));
+  }
+});
+
+// Poblar el selector de nivel inicial (1–15).
+for (let i = 1; i <= MAX_START_LEVEL; i++) {
+  const option = document.createElement('option');
+  option.value = String(i);
+  option.textContent = String(i);
+  startLevelSelect.appendChild(option);
+}
+startLevelSelect.value = String(startLevel);
 
 renderControlsList();
 applySkin(currentSkin);
