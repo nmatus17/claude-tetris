@@ -262,7 +262,9 @@ kbd {
 }
 
 #restart-btn,
-#keymap-close-btn {
+#keymap-close-btn,
+#play-btn,
+#save-score-btn {
   margin-top: 8px;
   background: #7aa2f7;
   color: #0f0f17;
@@ -277,6 +279,146 @@ kbd {
 }
 
 #restart-btn:hover,
-#keymap-close-btn:hover {
+#keymap-close-btn:hover,
+#play-btn:hover,
+#save-score-btn:hover {
   background: #9bbdff;
+}
+
+/* ---- Pantalla de inicio y tabla de records ---- */
+.start-box {
+  min-width: 300px;
+  gap: 20px;
+}
+
+.start-title {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 10px;
+  color: #7aa2f7;
+  text-shadow: 0 0 20px rgba(122, 162, 247, 0.5);
+}
+
+.records {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.records-title {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #555570;
+  font-weight: 700;
+}
+
+.highscores-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.highscore-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  color: #ccc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.highscore-row.highlight {
+  background: rgba(122, 162, 247, 0.25);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(122, 162, 247, 0.6) inset;
+}
+
+.hs-rank {
+  width: 20px;
+  color: #7aa2f7;
+  font-weight: 700;
+  text-align: right;
+}
+
+.hs-name {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hs-score {
+  font-weight: 700;
+}
+
+.highscore-empty {
+  font-size: 13px;
+  color: #888;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 4px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.value-sm {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: #7aa2f7;
+}
+
+/* ---- Entrada de nombre en game over ---- */
+.name-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.name-entry.hidden,
+.records.hidden {
+  display: none;
+}
+
+.name-entry label {
+  font-size: 13px;
+  color: #ccc;
+}
+
+#name-input {
+  background: #1a1a25;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  padding: 8px 12px;
+  text-align: center;
+  letter-spacing: 2px;
+  width: 200px;
+}
+
+#name-input:focus {
+  outline: none;
+  border-color: #7aa2f7;
 }
