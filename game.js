@@ -189,7 +189,6 @@ const remapBtn = document.getElementById('remap-btn');
 const overlayBox = document.getElementById('overlay-box');
 const keymapBox = document.getElementById('keymap-box');
 const skinSelect = document.getElementById('skin-select');
-const keymapOverlay = document.getElementById('keymap-overlay');
 const keymapList = document.getElementById('keymap-list');
 const keymapError = document.getElementById('keymap-error');
 const keymapResetBtn = document.getElementById('keymap-reset-btn');
@@ -460,6 +459,7 @@ function closeKeymapModal() {
   remappingAction = null;
   hideKeymapError();
   keymapBox.classList.add('hidden');
+  overlayBox.classList.remove('hidden');
   if (pausedByKeymap) {
     pausedByKeymap = false;
     paused = false;
@@ -467,7 +467,7 @@ function closeKeymapModal() {
     lastTime = performance.now();
     animId = requestAnimationFrame(loop);
   } else if (paused || gameOver) {
-    overlayBox.classList.remove('hidden');
+    // overlay-box ya restaurado arriba
   } else {
     overlay.classList.add('hidden');
   }
@@ -662,6 +662,8 @@ function endGame() {
 
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  overlayBox.classList.remove('hidden');
+  keymapBox.classList.add('hidden');
   overlay.classList.remove('hidden');
 
   if (qualifiesForTop(score)) {
