@@ -41,7 +41,8 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Vista previa** de la siguiente pieza.
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
-- **Pausa** y **Game Over** con opción de reinicio.
+- **Menú de pausa** con opciones reales: reanudar, reiniciar sin recargar, ver los controles y elegir el **nivel inicial** (1–15) de la próxima partida.
+- **Game Over** con opción de reinicio.
 - **Controles reasignables**: cada acción se puede remapear a otra tecla desde un modal, con persistencia en `localStorage`.
 
 ---
@@ -85,7 +86,9 @@ Después abre `http://localhost:8000` en el navegador.
 | `W`, `K`, `↑` o `Espacio` | Rotar la pieza en sentido horario |
 | `S` o `↓`                 | Soft drop (bajar más rápido)      |
 | `L` o `Enter`             | Hard drop (caída instantánea)     |
-| `P`                       | Pausar / reanudar                 |
+| `P` o `Esc`               | Pausar / reanudar                 |
+
+Al pausar (`P` o `Esc`) se abre un **menú de pausa** con botones para reanudar, reiniciar la partida sin recargar, desplegar la lista de controles y elegir el **nivel inicial** (1–15) que se aplicará a la próxima partida. Mientras el menú está abierto se bloquean los movimientos del juego para evitar acciones accidentales al reanudar.
 
 Estos son los controles por defecto. Puedes reasignarlos desde el botón **"Reasignar controles"** del panel lateral: elige la acción a cambiar, pulsa "Cambiar" y presiona la tecla nueva. La reasignación se guarda en `localStorage` y persiste entre sesiones; el botón "Restablecer" del modal vuelve a los valores por defecto.
 
@@ -101,7 +104,7 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para los estados **PAUSA** y **GAME OVER**.
+- Overlays para el **menú de pausa** y el estado **GAME OVER**.
 
 ### 2. `style.css`
 
