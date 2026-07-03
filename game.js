@@ -28,6 +28,118 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
+// ---- Temas visuales (skins) ----
+// Cada skin define su paleta (índices 1–7 alineados con PIECES/COLORS),
+// el fondo y color de rejilla del canvas, y su propia función de dibujo de bloque.
+const SKIN_STORAGE_KEY = 'tetris-skin';
+
+// Dibuja el contorno de un rectángulo con esquinas redondeadas (para la skin Pastel).
+function roundRectPath(context, x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2);
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.arcTo(x + w, y, x + w, y + h, radius);
+  context.arcTo(x + w, y + h, x, y + h, radius);
+  context.arcTo(x, y + h, x, y, radius);
+  context.arcTo(x, y, x + w, y, radius);
+  context.closePath();
+}
+
+const SKINS = {
+  retro: {
+    label: 'Retro',
+    background: '#1a1a25',
+    gridColor: '#22222e',
+    colors: COLORS,
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = this.colors[colorIndex];
+      context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      // brillo superior
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+      context.globalAlpha = 1;
+    },
+  },
+  neon: {
+    label: 'Neón',
+    background: '#000000',
+    gridColor: '#0d0d1a',
+    colors: [null, '#00e5ff', '#ffea00', '#d500f9', '#00e676', '#ff1744', '#3d5afe', '#ff9100'],
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      const color = this.colors[colorIndex];
+      // save/restore para que el shadowBlur no contamine otros dibujos.
+      context.save();
+      context.globalAlpha = alpha ?? 1;
+      context.shadowBlur = 14;
+      context.shadowColor = color;
+      context.fillStyle = color;
+      context.fillRect(x * size + 3, y * size + 3, size - 6, size - 6);
+      context.restore();
+    },
+  },
+  pastel: {
+    label: 'Pastel',
+    background: '#2e2e3e',
+    gridColor: '#3a3a4a',
+    colors: [null, '#a0e7e5', '#fbf8cc', '#cdb4db', '#b9fbc0', '#ffadad', '#a3c4f3', '#ffd6a5'],
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = this.colors[colorIndex];
+      // esquinas redondeadas simuladas
+      roundRectPath(context, x * size + 2, y * size + 2, size - 4, size - 4, 7);
+      context.fill();
+      context.globalAlpha = 1;
+    },
+  },
+  pixel: {
+    label: 'Pixel art',
+    background: '#12121a',
+    gridColor: '#000000',
+    colors: COLORS,
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      const color = this.colors[colorIndex];
+      const px = x * size;
+      const py = y * size;
+      context.globalAlpha = alpha ?? 1;
+      // color base
+      context.fillStyle = color;
+      context.fillRect(px, py, size, size);
+      // textura: rejilla 4×4 con luces y sombras alternas
+      const cell = size / 4;
+      for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+          context.fillStyle = (i + j) % 2 === 0 ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.16)';
+          context.fillRect(px + i * cell, py + j * cell, cell, cell);
+        }
+      }
+      // borde oscuro para separar bloques
+      context.strokeStyle = 'rgba(0,0,0,0.55)';
+      context.lineWidth = 2;
+      context.strokeRect(px + 1, py + 1, size - 2, size - 2);
+      context.globalAlpha = 1;
+    },
+  },
+};
+
+function loadSkin() {
+  try {
+    const saved = localStorage.getItem(SKIN_STORAGE_KEY);
+    if (saved && SKINS[saved]) return saved;
+  } catch (_) {
+    // localStorage no disponible o datos corruptos: se usa la skin por defecto.
+  }
+  return 'retro';
+}
+
+function saveSkin() {
+  try {
+    localStorage.setItem(SKIN_STORAGE_KEY, currentSkin);
+  } catch (_) {
+    // localStorage no disponible: la preferencia no persiste entre sesiones.
+  }
+}
+
 const KEYMAP_STORAGE_KEY = 'tetris-keymap';
 
 const DEFAULT_KEYMAP = {
@@ -70,6 +182,7 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const controlsList = document.getElementById('controls-list');
 const remapBtn = document.getElementById('remap-btn');
+const skinSelect = document.getElementById('skin-select');
 const keymapOverlay = document.getElementById('keymap-overlay');
 const keymapList = document.getElementById('keymap-list');
 const keymapError = document.getElementById('keymap-error');
@@ -79,6 +192,7 @@ const keymapCloseBtn = document.getElementById('keymap-close-btn');
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let keyMap = loadKeyMap();
 let remappingAction = null;
+let currentSkin = loadSkin();
 
 function codeToLabel(code) {
   return CODE_LABELS[code] || (code.startsWith('Key') ? code.slice(3) : code.startsWith('Digit') ? code.slice(5) : code);
@@ -308,18 +422,12 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
-  context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  // Delega el dibujo del bloque en la skin activa.
+  SKINS[currentSkin].drawBlock(context, x, y, colorIndex, size, alpha);
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = SKINS[currentSkin].gridColor;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -336,7 +444,10 @@ function drawGrid() {
 }
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Pinta el fondo según la skin activa (en vez de clearRect) para que el
+  // color de fondo del tablero cambie con el tema sin depender del CSS.
+  ctx.fillStyle = SKINS[currentSkin].background;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawGrid();
 
   // board
@@ -359,7 +470,8 @@ function draw() {
 
 function drawNext() {
   const NB = 30;
-  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  nextCtx.fillStyle = SKINS[currentSkin].background;
+  nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
   const shape = next.shape;
   const offX = Math.floor((4 - shape[0].length) / 2);
   const offY = Math.floor((4 - shape.length) / 2);
@@ -426,6 +538,12 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  // Si el foco está en un control de formulario (p. ej. el selector de skin),
+  // deja que reciba las teclas nativas y no proceses acciones del juego.
+  if (!remappingAction && /^(SELECT|INPUT|TEXTAREA)$/.test(e.target.tagName)) {
+    return;
+  }
+
   if (remappingAction) {
     if (e.code === 'Escape') {
       closeKeymapModal();
@@ -470,8 +588,25 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
+// Aplica una skin en caliente: guarda la preferencia, sincroniza el fondo
+// del canvas y vuelve a dibujar sin recargar la página.
+function applySkin(key) {
+  if (!SKINS[key]) return;
+  currentSkin = key;
+  saveSkin();
+  const skin = SKINS[key];
+  canvas.style.background = skin.background;
+  nextCanvas.style.background = skin.background;
+  if (board && current && next) {
+    draw();
+    drawNext();
+  }
+}
+
 restartBtn.addEventListener('click', init);
 remapBtn.addEventListener('click', openKeymapModal);
+skinSelect.value = currentSkin;
+skinSelect.addEventListener('change', () => applySkin(skinSelect.value));
 keymapCloseBtn.addEventListener('click', closeKeymapModal);
 keymapResetBtn.addEventListener('click', () => {
   keyMap = Object.fromEntries(Object.entries(DEFAULT_KEYMAP).map(([action, codes]) => [action, [...codes]]));
@@ -485,4 +620,5 @@ keymapOverlay.addEventListener('click', e => {
 });
 
 renderControlsList();
+applySkin(currentSkin);
 init();
