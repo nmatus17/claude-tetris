@@ -31,6 +31,16 @@
           <canvas id="next-canvas" width="120" height="120"></canvas>
         </div>
 
+        <div class="panel-section">
+          <span class="label">SKIN</span>
+          <select id="skin-select" class="skin-select">
+            <option value="retro">Retro</option>
+            <option value="neon">Neón</option>
+            <option value="pastel">Pastel</option>
+            <option value="pixel">Pixel art</option>
+          </select>
+        </div>
+
         <div class="panel-section controls">
           <span class="label">CONTROLS</span>
           <ul id="controls-list">
@@ -38,21 +48,81 @@
             <li><kbd>W</kbd><kbd>K</kbd> / <kbd>↑</kbd> / <kbd>Espacio</kbd> rotar</li>
             <li><kbd>S</kbd> / <kbd>↓</kbd> bajar</li>
             <li><kbd>L</kbd> / <kbd>Enter</kbd> caída</li>
-            <li><kbd>P</kbd> pausa</li>
+            <li><kbd>P</kbd> / <kbd>Esc</kbd> pausa</li>
           </ul>
           <button id="remap-btn" class="link-btn">Reasignar controles</button>
         </div>
       </aside>
     </div>
 
+    <div id="start-overlay" class="overlay">
+      <div class="overlay-box start-box">
+        <p class="start-title">TETRIS</p>
+        <div class="records">
+          <p class="records-title">MEJORES PUNTUACIONES</p>
+          <ol id="start-highscores" class="highscores-list"></ol>
+          <div class="stats-row">
+            <div class="stat">
+              <span class="label">MEJOR COMBO</span>
+              <span class="value-sm" id="start-best-combo">0</span>
+            </div>
+            <div class="stat">
+              <span class="label">LÍNEAS MÁX</span>
+              <span class="value-sm" id="start-max-lines">0</span>
+            </div>
+          </div>
+        </div>
+        <button id="play-btn">Jugar</button>
+        <button id="reset-scores-btn" class="link-btn">Borrar records</button>
+      </div>
+    </div>
+
     <div id="overlay" class="overlay hidden">
       <div id="overlay-box" class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+        <div id="name-entry" class="name-entry hidden">
+          <label for="name-input">¡Nuevo record! Escribe tu nombre:</label>
+          <input id="name-input" type="text" maxlength="12" autocomplete="off" />
+          <button id="save-score-btn">Guardar</button>
+        </div>
+        <div id="gameover-records" class="records hidden">
+          <p class="records-title">MEJORES PUNTUACIONES</p>
+          <ol id="gameover-highscores" class="highscores-list"></ol>
+          <div class="stats-row">
+            <div class="stat">
+              <span class="label">MEJOR COMBO</span>
+              <span class="value-sm" id="gameover-best-combo">0</span>
+            </div>
+            <div class="stat">
+              <span class="label">LÍNEAS MÁX</span>
+              <span class="value-sm" id="gameover-max-lines">0</span>
+            </div>
+          </div>
+        </div>
         <button id="restart-btn">Reiniciar</button>
       </div>
 
       <div id="keymap-box" class="overlay-box keymap-box hidden">
+    <div id="pause-overlay" class="overlay hidden">
+      <div class="overlay-box pause-box">
+        <p class="pause-title">PAUSA</p>
+        <div class="pause-menu">
+          <button id="resume-btn">Reanudar</button>
+          <button id="pause-restart-btn">Reiniciar</button>
+          <button id="pause-controls-btn" class="link-btn">Ver controles</button>
+        </div>
+        <ul id="pause-controls-list" class="pause-controls-list hidden"></ul>
+        <div class="pause-level">
+          <label for="start-level-select">Nivel inicial</label>
+          <select id="start-level-select"></select>
+        </div>
+        <p class="pause-hint">El nivel inicial se aplica a la próxima partida.</p>
+      </div>
+    </div>
+
+    <div id="keymap-overlay" class="overlay hidden">
+      <div class="overlay-box keymap-box">
         <p class="keymap-title">CONTROLES</p>
         <p id="keymap-error" class="keymap-error hidden"></p>
         <ul id="keymap-list" class="keymap-list"></ul>

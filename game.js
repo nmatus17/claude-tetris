@@ -28,7 +28,123 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
+// ---- Temas visuales (skins) ----
+// Cada skin define su paleta (índices 1–7 alineados con PIECES/COLORS),
+// el fondo y color de rejilla del canvas, y su propia función de dibujo de bloque.
+const SKIN_STORAGE_KEY = 'tetris-skin';
+
+// Dibuja el contorno de un rectángulo con esquinas redondeadas (para la skin Pastel).
+function roundRectPath(context, x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2);
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.arcTo(x + w, y, x + w, y + h, radius);
+  context.arcTo(x + w, y + h, x, y + h, radius);
+  context.arcTo(x, y + h, x, y, radius);
+  context.arcTo(x, y, x + w, y, radius);
+  context.closePath();
+}
+
+const SKINS = {
+  retro: {
+    label: 'Retro',
+    background: '#1a1a25',
+    gridColor: '#22222e',
+    colors: COLORS,
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = this.colors[colorIndex];
+      context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      // brillo superior
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+      context.globalAlpha = 1;
+    },
+  },
+  neon: {
+    label: 'Neón',
+    background: '#000000',
+    gridColor: '#0d0d1a',
+    colors: [null, '#00e5ff', '#ffea00', '#d500f9', '#00e676', '#ff1744', '#3d5afe', '#ff9100'],
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      const color = this.colors[colorIndex];
+      // save/restore para que el shadowBlur no contamine otros dibujos.
+      context.save();
+      context.globalAlpha = alpha ?? 1;
+      context.shadowBlur = 14;
+      context.shadowColor = color;
+      context.fillStyle = color;
+      context.fillRect(x * size + 3, y * size + 3, size - 6, size - 6);
+      context.restore();
+    },
+  },
+  pastel: {
+    label: 'Pastel',
+    background: '#2e2e3e',
+    gridColor: '#3a3a4a',
+    colors: [null, '#a0e7e5', '#fbf8cc', '#cdb4db', '#b9fbc0', '#ffadad', '#a3c4f3', '#ffd6a5'],
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = this.colors[colorIndex];
+      // esquinas redondeadas simuladas
+      roundRectPath(context, x * size + 2, y * size + 2, size - 4, size - 4, 7);
+      context.fill();
+      context.globalAlpha = 1;
+    },
+  },
+  pixel: {
+    label: 'Pixel art',
+    background: '#12121a',
+    gridColor: '#000000',
+    colors: COLORS,
+    drawBlock(context, x, y, colorIndex, size, alpha) {
+      const color = this.colors[colorIndex];
+      const px = x * size;
+      const py = y * size;
+      context.globalAlpha = alpha ?? 1;
+      // color base
+      context.fillStyle = color;
+      context.fillRect(px, py, size, size);
+      // textura: rejilla 4×4 con luces y sombras alternas
+      const cell = size / 4;
+      for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+          context.fillStyle = (i + j) % 2 === 0 ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.16)';
+          context.fillRect(px + i * cell, py + j * cell, cell, cell);
+        }
+      }
+      // borde oscuro para separar bloques
+      context.strokeStyle = 'rgba(0,0,0,0.55)';
+      context.lineWidth = 2;
+      context.strokeRect(px + 1, py + 1, size - 2, size - 2);
+      context.globalAlpha = 1;
+    },
+  },
+};
+
+function loadSkin() {
+  try {
+    const saved = localStorage.getItem(SKIN_STORAGE_KEY);
+    if (saved && SKINS[saved]) return saved;
+  } catch (_) {
+    // localStorage no disponible o datos corruptos: se usa la skin por defecto.
+  }
+  return 'retro';
+}
+
+function saveSkin() {
+  try {
+    localStorage.setItem(SKIN_STORAGE_KEY, currentSkin);
+  } catch (_) {
+    // localStorage no disponible: la preferencia no persiste entre sesiones.
+  }
+}
+
 const KEYMAP_STORAGE_KEY = 'tetris-keymap';
+const HIGHSCORES_STORAGE_KEY = 'tetris-highscores';
+const STATS_STORAGE_KEY = 'tetris-stats';
+const MAX_HIGHSCORES = 5;
+const MAX_NAME_LENGTH = 12;
 
 const DEFAULT_KEYMAP = {
   moveLeft: ['KeyA', 'ArrowLeft'],
@@ -36,7 +152,7 @@ const DEFAULT_KEYMAP = {
   softDrop: ['KeyS', 'ArrowDown'],
   rotate: ['KeyW', 'KeyK', 'ArrowUp', 'Space'],
   hardDrop: ['KeyL', 'Enter'],
-  pause: ['KeyP'],
+  pause: ['KeyP', 'Escape'],
 };
 
 const ACTION_LABELS = {
@@ -72,14 +188,44 @@ const controlsList = document.getElementById('controls-list');
 const remapBtn = document.getElementById('remap-btn');
 const overlayBox = document.getElementById('overlay-box');
 const keymapBox = document.getElementById('keymap-box');
+const skinSelect = document.getElementById('skin-select');
+const keymapOverlay = document.getElementById('keymap-overlay');
 const keymapList = document.getElementById('keymap-list');
 const keymapError = document.getElementById('keymap-error');
 const keymapResetBtn = document.getElementById('keymap-reset-btn');
 const keymapCloseBtn = document.getElementById('keymap-close-btn');
+const pauseOverlay = document.getElementById('pause-overlay');
+const pauseControlsBtn = document.getElementById('pause-controls-btn');
+const pauseControlsList = document.getElementById('pause-controls-list');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const startLevelSelect = document.getElementById('start-level-select');
+
+const MAX_START_LEVEL = 15;
+
+const startOverlay = document.getElementById('start-overlay');
+const startHighscores = document.getElementById('start-highscores');
+const startBestCombo = document.getElementById('start-best-combo');
+const startMaxLines = document.getElementById('start-max-lines');
+const playBtn = document.getElementById('play-btn');
+const resetScoresBtn = document.getElementById('reset-scores-btn');
+const nameEntry = document.getElementById('name-entry');
+const nameInput = document.getElementById('name-input');
+const saveScoreBtn = document.getElementById('save-score-btn');
+const gameoverRecords = document.getElementById('gameover-records');
+const gameoverHighscores = document.getElementById('gameover-highscores');
+const gameoverBestCombo = document.getElementById('gameover-best-combo');
+const gameoverMaxLines = document.getElementById('gameover-max-lines');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, pausedByKeymap;
+let combo, maxCombo;
 let keyMap = loadKeyMap();
+let highscores = loadHighscores();
+let stats = loadStats();
 let remappingAction = null;
+let currentSkin = loadSkin();
+let startLevel = 1;   // nivel elegido en el menú; se aplica a la PRÓXIMA partida
+let baseLevel = 1;    // nivel base de la partida actual (fijado en init)
 
 function codeToLabel(code) {
   return CODE_LABELS[code] || (code.startsWith('Key') ? code.slice(3) : code.startsWith('Digit') ? code.slice(5) : code);
@@ -111,6 +257,120 @@ function saveKeyMap() {
   }
 }
 
+function loadHighscores() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HIGHSCORES_STORAGE_KEY));
+    if (Array.isArray(saved)) {
+      return saved
+        .filter(e => e && typeof e.score === 'number')
+        .map(e => ({
+          name: typeof e.name === 'string' ? e.name : 'ANÓNIMO',
+          score: e.score,
+          lines: typeof e.lines === 'number' ? e.lines : 0,
+          level: typeof e.level === 'number' ? e.level : 1,
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, MAX_HIGHSCORES);
+    }
+  } catch (_) {
+    // localStorage no disponible o datos corruptos: se empieza sin records.
+  }
+  return [];
+}
+
+function saveHighscores() {
+  try {
+    localStorage.setItem(HIGHSCORES_STORAGE_KEY, JSON.stringify(highscores));
+  } catch (_) {
+    // localStorage no disponible: los records no persisten entre sesiones.
+  }
+}
+
+function loadStats() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STATS_STORAGE_KEY));
+    if (saved && typeof saved === 'object') {
+      return {
+        bestCombo: typeof saved.bestCombo === 'number' ? saved.bestCombo : 0,
+        maxLines: typeof saved.maxLines === 'number' ? saved.maxLines : 0,
+      };
+    }
+  } catch (_) {
+    // localStorage no disponible o datos corruptos: se usan valores por defecto.
+  }
+  return { bestCombo: 0, maxLines: 0 };
+}
+
+function saveStats() {
+  try {
+    localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
+  } catch (_) {
+    // localStorage no disponible: las estadísticas no persisten entre sesiones.
+  }
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+function qualifiesForTop(sc) {
+  if (sc <= 0) return false;
+  if (highscores.length < MAX_HIGHSCORES) return true;
+  return sc > highscores[highscores.length - 1].score;
+}
+
+function highscoresMarkup(list, highlightIndex) {
+  if (!list.length) {
+    return '<li class="highscore-empty">Aún no hay records. ¡Sé el primero!</li>';
+  }
+  return list.map((e, i) => {
+    const cls = i === highlightIndex ? 'highscore-row highlight' : 'highscore-row';
+    return `<li class="${cls}">` +
+      `<span class="hs-rank">${i + 1}</span>` +
+      `<span class="hs-name">${escapeHtml(e.name)}</span>` +
+      `<span class="hs-score">${e.score.toLocaleString()}</span>` +
+      `</li>`;
+  }).join('');
+}
+
+function renderStartScreen() {
+  startHighscores.innerHTML = highscoresMarkup(highscores, -1);
+  startBestCombo.textContent = stats.bestCombo;
+  startMaxLines.textContent = stats.maxLines;
+}
+
+function showGameOverRecords(highlightIndex) {
+  gameoverHighscores.innerHTML = highscoresMarkup(highscores, highlightIndex);
+  gameoverBestCombo.textContent = stats.bestCombo;
+  gameoverMaxLines.textContent = stats.maxLines;
+  gameoverRecords.classList.remove('hidden');
+}
+
+function showNameEntry() {
+  gameoverRecords.classList.add('hidden');
+  nameEntry.classList.remove('hidden');
+  nameInput.value = '';
+  nameInput.focus();
+}
+
+function hideNameEntry() {
+  nameEntry.classList.add('hidden');
+}
+
+function submitScore() {
+  const name = (nameInput.value.trim() || 'ANÓNIMO').slice(0, MAX_NAME_LENGTH).toUpperCase();
+  const entry = { name, score, lines, level };
+  highscores.push(entry);
+  highscores.sort((a, b) => b.score - a.score);
+  highscores = highscores.slice(0, MAX_HIGHSCORES);
+  saveHighscores();
+  hideNameEntry();
+  showGameOverRecords(highscores.indexOf(entry));
+  renderStartScreen();
+}
+
 function actionForCode(code) {
   for (const action of Object.keys(keyMap)) {
     if (keyMap[action].includes(code)) return action;
@@ -119,10 +379,12 @@ function actionForCode(code) {
 }
 
 function renderControlsList() {
-  controlsList.innerHTML = Object.keys(DEFAULT_KEYMAP).map(action => {
+  const html = Object.keys(DEFAULT_KEYMAP).map(action => {
     const keys = keyMap[action].map(code => `<kbd>${codeToLabel(code)}</kbd>`).join(' ');
     return `<li>${keys} ${ACTION_LABELS[action]}</li>`;
   }).join('');
+  controlsList.innerHTML = html;
+  pauseControlsList.innerHTML = html;
 }
 
 function renderKeymapModal() {
@@ -273,11 +535,15 @@ function clearLines() {
     }
   }
   if (cleared) {
+    combo++;
+    if (combo > maxCombo) maxCombo = combo;
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
+    level = baseLevel + Math.floor(lines / 10);
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
+  } else {
+    combo = 0;
   }
 }
 
@@ -327,18 +593,12 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
-  context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  // Delega el dibujo del bloque en la skin activa.
+  SKINS[currentSkin].drawBlock(context, x, y, colorIndex, size, alpha);
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = SKINS[currentSkin].gridColor;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -355,7 +615,10 @@ function drawGrid() {
 }
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Pinta el fondo según la skin activa (en vez de clearRect) para que el
+  // color de fondo del tablero cambie con el tema sin depender del CSS.
+  ctx.fillStyle = SKINS[currentSkin].background;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawGrid();
 
   // board
@@ -378,7 +641,8 @@ function draw() {
 
 function drawNext() {
   const NB = 30;
-  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  nextCtx.fillStyle = SKINS[currentSkin].background;
+  nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
   const shape = next.shape;
   const offX = Math.floor((4 - shape[0].length) / 2);
   const offY = Math.floor((4 - shape.length) / 2);
@@ -390,24 +654,52 @@ function drawNext() {
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
+
+  // Persistir estadísticas globales de la partida.
+  if (maxCombo > stats.bestCombo) stats.bestCombo = maxCombo;
+  if (lines > stats.maxLines) stats.maxLines = lines;
+  saveStats();
+
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+
+  if (qualifiesForTop(score)) {
+    showNameEntry();
+  } else {
+    hideNameEntry();
+    showGameOverRecords(-1);
+  }
+  renderStartScreen();
+}
+
+function openPauseMenu() {
+  renderControlsList();
+  pauseControlsList.classList.add('hidden');
+  pauseControlsBtn.textContent = 'Ver controles';
+  startLevelSelect.value = String(startLevel);
+  pauseOverlay.classList.remove('hidden');
+}
+
+function closePauseMenu() {
+  pauseOverlay.classList.add('hidden');
 }
 
 function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
-    overlay.classList.add('hidden');
+    closePauseMenu();
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    openPauseMenu();
   }
+}
+
+function resumeGame() {
+  if (paused && !gameOver) togglePause();
 }
 
 function loop(ts) {
@@ -430,11 +722,14 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  baseLevel = startLevel;
+  level = baseLevel;
   paused = false;
   pausedByKeymap = false;
   gameOver = false;
-  dropInterval = 1000;
+  combo = 0;
+  maxCombo = 0;
+  dropInterval = Math.max(100, 1000 - (baseLevel - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
@@ -443,11 +738,20 @@ function init() {
   overlay.classList.add('hidden');
   overlayBox.classList.remove('hidden');
   keymapBox.classList.add('hidden');
+  hideNameEntry();
+  gameoverRecords.classList.add('hidden');
+  closePauseMenu();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
+  // Si el foco está en un control de formulario (p. ej. el selector de skin),
+  // deja que reciba las teclas nativas y no proceses acciones del juego.
+  if (!remappingAction && /^(SELECT|INPUT|TEXTAREA)$/.test(e.target.tagName)) {
+    return;
+  }
+
   if (remappingAction) {
     if (e.code === 'Escape') {
       closeKeymapModal();
@@ -497,8 +801,49 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
+// Aplica una skin en caliente: guarda la preferencia, sincroniza el fondo
+// del canvas y vuelve a dibujar sin recargar la página.
+function applySkin(key) {
+  if (!SKINS[key]) return;
+  currentSkin = key;
+  saveSkin();
+  const skin = SKINS[key];
+  canvas.style.background = skin.background;
+  nextCanvas.style.background = skin.background;
+  if (board && current && next) {
+    draw();
+    drawNext();
+  }
+}
+
 restartBtn.addEventListener('click', init);
 remapBtn.addEventListener('click', openKeymapModal);
+skinSelect.value = currentSkin;
+skinSelect.addEventListener('change', () => applySkin(skinSelect.value));
+
+playBtn.addEventListener('click', () => {
+  startOverlay.classList.add('hidden');
+  init();
+});
+
+resetScoresBtn.addEventListener('click', () => {
+  highscores = [];
+  stats = { bestCombo: 0, maxLines: 0 };
+  saveHighscores();
+  saveStats();
+  renderStartScreen();
+});
+
+saveScoreBtn.addEventListener('click', submitScore);
+
+// El campo de nombre no debe disparar acciones del juego: se aísla del handler global.
+nameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    submitScore();
+  }
+  e.stopPropagation();
+});
 keymapCloseBtn.addEventListener('click', closeKeymapModal);
 keymapResetBtn.addEventListener('click', () => {
   keyMap = Object.fromEntries(Object.entries(DEFAULT_KEYMAP).map(([action, codes]) => [action, [...codes]]));
@@ -511,5 +856,29 @@ overlay.addEventListener('click', e => {
   if (e.target === overlay && !keymapBox.classList.contains('hidden')) closeKeymapModal();
 });
 
+resumeBtn.addEventListener('click', resumeGame);
+pauseRestartBtn.addEventListener('click', init);
+pauseControlsBtn.addEventListener('click', () => {
+  const collapsed = pauseControlsList.classList.toggle('hidden');
+  pauseControlsBtn.textContent = collapsed ? 'Ver controles' : 'Ocultar controles';
+});
+startLevelSelect.addEventListener('change', () => {
+  const value = parseInt(startLevelSelect.value, 10);
+  if (Number.isFinite(value)) {
+    startLevel = Math.min(MAX_START_LEVEL, Math.max(1, value));
+  }
+});
+
+// Poblar el selector de nivel inicial (1–15).
+for (let i = 1; i <= MAX_START_LEVEL; i++) {
+  const option = document.createElement('option');
+  option.value = String(i);
+  option.textContent = String(i);
+  startLevelSelect.appendChild(option);
+}
+startLevelSelect.value = String(startLevel);
+
 renderControlsList();
+applySkin(currentSkin);
 init();
+renderStartScreen();
