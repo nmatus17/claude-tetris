@@ -140,6 +140,26 @@ function saveSkin() {
   }
 }
 
+const THEME_STORAGE_KEY = 'tetris-theme';
+
+function loadTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch (_) {
+    // localStorage no disponible o datos corruptos: se usa el tema por defecto.
+  }
+  return 'dark';
+}
+
+function saveTheme() {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
+  } catch (_) {
+    // localStorage no disponible: la preferencia no persiste entre sesiones.
+  }
+}
+
 const KEYMAP_STORAGE_KEY = 'tetris-keymap';
 const HIGHSCORES_STORAGE_KEY = 'tetris-highscores';
 const STATS_STORAGE_KEY = 'tetris-stats';
@@ -189,6 +209,7 @@ const remapBtn = document.getElementById('remap-btn');
 const overlayBox = document.getElementById('overlay-box');
 const keymapBox = document.getElementById('keymap-box');
 const skinSelect = document.getElementById('skin-select');
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
 const keymapList = document.getElementById('keymap-list');
 const keymapError = document.getElementById('keymap-error');
 const keymapResetBtn = document.getElementById('keymap-reset-btn');
@@ -223,6 +244,7 @@ let highscores = loadHighscores();
 let stats = loadStats();
 let remappingAction = null;
 let currentSkin = loadSkin();
+let currentTheme = loadTheme();
 let startLevel = 1;   // nivel elegido en el menú; se aplica a la PRÓXIMA partida
 let baseLevel = 1;    // nivel base de la partida actual (fijado en init)
 
@@ -829,10 +851,20 @@ function applySkin(key) {
   }
 }
 
+// Alterna entre tema claro y oscuro: guarda la preferencia y actualiza la
+// clase en <body> (los colores los define style.css vía custom properties).
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.body.classList.toggle('theme-light', theme === 'light');
+  themeToggleBtn.textContent = theme === 'light' ? 'Modo oscuro' : 'Modo claro';
+  saveTheme();
+}
+
 restartBtn.addEventListener('click', init);
 remapBtn.addEventListener('click', openKeymapModal);
 skinSelect.value = currentSkin;
 skinSelect.addEventListener('change', () => applySkin(skinSelect.value));
+themeToggleBtn.addEventListener('click', () => applyTheme(currentTheme === 'light' ? 'dark' : 'light'));
 
 playBtn.addEventListener('click', () => {
   startOverlay.classList.add('hidden');
@@ -893,5 +925,6 @@ startLevelSelect.value = String(startLevel);
 
 renderControlsList();
 applySkin(currentSkin);
+applyTheme(currentTheme);
 init(false);
 renderStartScreen();
