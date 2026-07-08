@@ -48,8 +48,8 @@ function roundRectPath(context, x, y, w, h, r) {
 const SKINS = {
   retro: {
     label: 'Retro',
-    background: '#1a1a25',
-    gridColor: '#22222e',
+    background: { dark: '#1a1a25', light: '#f2f2f8' },
+    gridColor: { dark: '#22222e', light: '#dcdce8' },
     colors: COLORS,
     drawBlock(context, x, y, colorIndex, size, alpha) {
       context.globalAlpha = alpha ?? 1;
@@ -63,8 +63,8 @@ const SKINS = {
   },
   neon: {
     label: 'Neón',
-    background: '#000000',
-    gridColor: '#0d0d1a',
+    background: { dark: '#000000', light: '#f7f7fb' },
+    gridColor: { dark: '#0d0d1a', light: '#e4e4ee' },
     colors: [null, '#00e5ff', '#ffea00', '#d500f9', '#00e676', '#ff1744', '#3d5afe', '#ff9100'],
     drawBlock(context, x, y, colorIndex, size, alpha) {
       const color = this.colors[colorIndex];
@@ -80,8 +80,8 @@ const SKINS = {
   },
   pastel: {
     label: 'Pastel',
-    background: '#2e2e3e',
-    gridColor: '#3a3a4a',
+    background: { dark: '#2e2e3e', light: '#faf8fd' },
+    gridColor: { dark: '#3a3a4a', light: '#ece8f5' },
     colors: [null, '#a0e7e5', '#fbf8cc', '#cdb4db', '#b9fbc0', '#ffadad', '#a3c4f3', '#ffd6a5'],
     drawBlock(context, x, y, colorIndex, size, alpha) {
       context.globalAlpha = alpha ?? 1;
@@ -94,8 +94,8 @@ const SKINS = {
   },
   pixel: {
     label: 'Pixel art',
-    background: '#12121a',
-    gridColor: '#000000',
+    background: { dark: '#12121a', light: '#eef0f7' },
+    gridColor: { dark: '#000000', light: '#c7c9d6' },
     colors: COLORS,
     drawBlock(context, x, y, colorIndex, size, alpha) {
       const color = this.colors[colorIndex];
@@ -208,8 +208,8 @@ const controlsList = document.getElementById('controls-list');
 const remapBtn = document.getElementById('remap-btn');
 const overlayBox = document.getElementById('overlay-box');
 const keymapBox = document.getElementById('keymap-box');
-const skinSelect = document.getElementById('skin-select');
-const themeToggleBtn = document.getElementById('theme-toggle-btn');
+const skinSelects = document.querySelectorAll('.skin-select');
+const themeToggleBtns = document.querySelectorAll('.theme-toggle-btn');
 const keymapList = document.getElementById('keymap-list');
 const keymapError = document.getElementById('keymap-error');
 const keymapResetBtn = document.getElementById('keymap-reset-btn');
@@ -619,8 +619,17 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   SKINS[currentSkin].drawBlock(context, x, y, colorIndex, size, alpha);
 }
 
+// Resuelve el fondo/rejilla de la skin activa según el tema claro/oscuro.
+function skinBackground() {
+  return SKINS[currentSkin].background[currentTheme];
+}
+
+function skinGridColor() {
+  return SKINS[currentSkin].gridColor[currentTheme];
+}
+
 function drawGrid() {
-  ctx.strokeStyle = SKINS[currentSkin].gridColor;
+  ctx.strokeStyle = skinGridColor();
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -639,7 +648,7 @@ function drawGrid() {
 function draw() {
   // Pinta el fondo según la skin activa (en vez de clearRect) para que el
   // color de fondo del tablero cambie con el tema sin depender del CSS.
-  ctx.fillStyle = SKINS[currentSkin].background;
+  ctx.fillStyle = skinBackground();
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawGrid();
 
@@ -663,7 +672,7 @@ function draw() {
 
 function drawNext() {
   const NB = 30;
-  nextCtx.fillStyle = SKINS[currentSkin].background;
+  nextCtx.fillStyle = skinBackground();
   nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
   const shape = next.shape;
   const offX = Math.floor((4 - shape[0].length) / 2);
@@ -842,29 +851,41 @@ function applySkin(key) {
   if (!SKINS[key]) return;
   currentSkin = key;
   saveSkin();
-  const skin = SKINS[key];
-  canvas.style.background = skin.background;
-  nextCanvas.style.background = skin.background;
+  skinSelects.forEach(sel => { sel.value = key; });
+  canvas.style.background = skinBackground();
+  nextCanvas.style.background = skinBackground();
   if (board && current && next) {
     draw();
     drawNext();
   }
 }
 
-// Alterna entre tema claro y oscuro: guarda la preferencia y actualiza la
-// clase en <body> (los colores los define style.css vía custom properties).
+// Alterna entre tema claro y oscuro: guarda la preferencia, actualiza la
+// clase en <body> (los colores los define style.css vía custom properties)
+// y sincroniza el fondo del canvas, que depende de la skin + tema activos.
 function applyTheme(theme) {
   currentTheme = theme;
   document.body.classList.toggle('theme-light', theme === 'light');
-  themeToggleBtn.textContent = theme === 'light' ? 'Modo oscuro' : 'Modo claro';
+  const label = theme === 'light' ? 'Modo oscuro' : 'Modo claro';
+  themeToggleBtns.forEach(btn => { btn.textContent = label; });
   saveTheme();
+  canvas.style.background = skinBackground();
+  nextCanvas.style.background = skinBackground();
+  if (board && current && next) {
+    draw();
+    drawNext();
+  }
 }
 
 restartBtn.addEventListener('click', init);
 remapBtn.addEventListener('click', openKeymapModal);
-skinSelect.value = currentSkin;
-skinSelect.addEventListener('change', () => applySkin(skinSelect.value));
-themeToggleBtn.addEventListener('click', () => applyTheme(currentTheme === 'light' ? 'dark' : 'light'));
+skinSelects.forEach(sel => {
+  sel.value = currentSkin;
+  sel.addEventListener('change', () => applySkin(sel.value));
+});
+themeToggleBtns.forEach(btn => {
+  btn.addEventListener('click', () => applyTheme(currentTheme === 'light' ? 'dark' : 'light'));
+});
 
 playBtn.addEventListener('click', () => {
   startOverlay.classList.add('hidden');
