@@ -461,6 +461,21 @@ kbd {
   background: var(--accent-hover);
 }
 
+/* ---- SKIN/TEMA dentro de overlays (inicio y pausa) ---- */
+.overlay-settings {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.overlay-settings-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
 /* ---- Pantalla de inicio y tabla de records ---- */
 .start-box {
   min-width: 300px;
